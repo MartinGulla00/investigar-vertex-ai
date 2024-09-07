@@ -1,12 +1,16 @@
 import vertexai
 from vertexai.generative_models import GenerativeModel
 
+def remove_formatting(text):
+    return text.replace("```sql", "").replace("```", "")
+
 if __name__ == '__main__':
     print("initializing vertex ai")
     project_id = "vertex-ai-434320"
     vertexai.init(project=project_id, location="us-east1")
     model = GenerativeModel(model_name="gemini-1.5-flash-001", system_instruction=[
-        "Only return SQL queries, if you can't generate a SQL query with the given context and the question, return an empty string.",
+        "Only return SQL queries without any formatting, if you can't generate a SQL query with the given context and the question, return an empty string.",
+        "The returned SQL should be ready to be executed in a MySQL database.",
         "You are a data analysis expert.",
         """This are the tables in the database, their columns, and the description of the columns:
         ' Table name - Column name - Description
@@ -21,9 +25,7 @@ if __name__ == '__main__':
         ' clientes - id - its the id of the customer
         ' clientes - nombre - its the name of the customer"""
     ])
-    question = "Cuales son los clientes que compraron la mayor cantidad de productos distintos?"
-    print(question)
-    
-    response = model.generate_content(question)
+    chat = model.start_chat()
+    question = input("Enter question: ")
 
-    print(response)
+    print(remove_formatting(chat.send_message(question).text))
