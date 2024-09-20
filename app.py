@@ -1,5 +1,7 @@
 import vertexai
 from vertexai.generative_models import GenerativeModel
+from database_schema_reparaciones import context
+# from database_schema_damap import context
 
 def remove_formatting(text):
     return text.replace("```sql", "").replace("```", "")
@@ -9,23 +11,25 @@ if __name__ == '__main__':
     project_id = "vertex-ai-434320"
     vertexai.init(project=project_id, location="us-east1")
     model = GenerativeModel(model_name="gemini-1.5-flash-001", system_instruction=[
-        "Only return SQL queries without any formatting, if you can't generate a SQL query with the given context and the question, return an empty string.",
-        "The returned SQL should be ready to be executed in the database.",
-        "You are a data analysis expert.",
-        """This are the tables in the database, their columns, and the description of the columns:
-        ' Table name - Column name - Description
-        ' productos - id - It's the id of the product 
-        ' productos - nombre - It's the name of the product 
-        ' productos - precio_unitario - It's the price per unit of the product
-        ' ventas - id - It's the id of a sale made to a customer
-        ' ventas - id_producto - It's the product id that was purchased
-        ' ventas - cantidad - its how many of the product where made
-        ' ventas - fecha_venta - its when the purchase was made
-        ' ventas - id_cliente - its the id of the customer that bought the product
-        ' clientes - id - its the id of the customer
-        ' clientes - nombre - its the name of the customer"""
+        "You are a MySQL expert that generates SQL queries based on a database schema and a user's natural language input provided.",
+        "Read the user input carefully and create a syntactically correct MySQL query to retrieve the data needed from the database to answer the user's question.",
+        "Ensure that you incorporate all relevant details, such as specific dates, from the user's input in the SQL query.",
+        "Provide only the SQL query as a single block code with no explanation or extra information.",
+        "Always prioritize retrieving descriptive fields such as `name` or `description` instead of IDs, to make the query results more understandable and user-friendly.",
+        "Never query for all columns from a table. You must query only the columns that are needed to answer the question.",
+        "Double-check that all columns used in the query exist in the table schema provided. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.",
+        "Double-check that all columns used in the query exist in the table schema provided. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.",
+        f"Database Schema: \n {context}",
+        f"User Input: \n {context}",
+        "Remember, avoid explaining and commenting the query. Return ONLY the query in a SINGLE CODE BLOCK.",
+        "Let’s think step by step.",
     ])
     chat = model.start_chat()
     question = input("Enter question: ")
 
-    print(remove_formatting(chat.send_message(question).text))
+    response = chat.send_message(question).text
+    # print(f"""Response \n{response}""")
+    sql = remove_formatting(response)
+    print(f"""SQL \n{sql}""")
+    # sql = remove_formatting(chat.send_message(f"""Given the following database schema: {context}\n Is the following SQL right for that schema? {sql} \n Return only the SQL or the SQL with the necessary corrections""").text)
+    # print(f"""Second SQL \n{sql}""")
