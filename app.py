@@ -2,11 +2,23 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 from database_schema_reparaciones import context
 # from database_schema_damap import context
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "http://localhost:5174"}})
+
+@app.route('/transform-query', methods=['POST'])
+def transform_query():
+    data = request.json
+    sql_query = ask_vertex_for_query(data.get("schema"), data.get("query"))
+    return jsonify({"sqlQuery": sql_query})
+
 
 def remove_formatting(text):
     return text.replace("```sql", "").replace("```", "")
 
-if __name__ == '__main__':
+def ask_vertex_for_query(schema, question):
     print("initializing vertex ai")
     project_id = "vertex-ai-434320"
     vertexai.init(project=project_id, location="us-east1")
@@ -19,17 +31,16 @@ if __name__ == '__main__':
         "Never query for all columns from a table. You must query only the columns that are needed to answer the question.",
         "Double-check that all columns used in the query exist in the table schema provided. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.",
         "Double-check that all columns used in the query exist in the table schema provided. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.",
-        f"Database Schema: \n {context}",
-        f"User Input: \n {context}",
+        # f"Database Schema: \n {context}",
+        f"Database Schema: \n {schema}",
+        # f"User Input: \n {context}",
         "Remember, avoid explaining and commenting the query. Return ONLY the query in a SINGLE CODE BLOCK.",
         "Let’s think step by step.",
     ])
-    chat = model.start_chat()
-    question = input("Enter question: ")
 
-    response = chat.send_message(question).text
-    # print(f"""Response \n{response}""")
-    sql = remove_formatting(response)
-    print(f"""SQL \n{sql}""")
-    # sql = remove_formatting(chat.send_message(f"""Given the following database schema: {context}\n Is the following SQL right for that schema? {sql} \n Return only the SQL or the SQL with the necessary corrections""").text)
-    # print(f"""Second SQL \n{sql}""")
+    response = model.generate_content(f"User Input: \n {question}")
+
+    return remove_formatting(response.text)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8001)
